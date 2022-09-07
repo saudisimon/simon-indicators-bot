@@ -1,0 +1,11 @@
+ta
+schedule
+ccxt
+pandas
+numpy
+pyTelegramBotAPI
+pandas_ta
+binance
+python-binance
+matplotlib
+stock-pandas

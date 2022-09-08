@@ -42,3 +42,9 @@ class BinanceClient:
         for col in df.columns[1:]:
             df[col] = pd.to_numeric(df[col])
         return df
+
+    def get_symbol_info(self, symbol):
+        return self.binance_client.get_symbol_info(symbol=symbol)
+
+    def get_symbol_ticker(self, symbol):
+        return self.binance_client.get_symbol_ticker(symbol=symbol)

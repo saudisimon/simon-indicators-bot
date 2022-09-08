@@ -1,5 +1,7 @@
 import datetime
 
+from finta import TA
+
 import schedule
 
 from services.binance.client import BinanceClient
@@ -95,6 +97,9 @@ def run_bot(symbol, interval, period, atr_multiplier, window, limit, alert_once,
         print(f"Fetching Historical Klines: {symbol} - Chart: {interval} - Time: {now} ...... ")
         df = binance_client.fetch_historical_klines(symbol=symbol, interval=interval, limit=limit)
         df = add_indicators(df)
+        df['atr'] = TA.ATR(df, period=3)
+        df['atr_upper'] = df['close'] + (atr_multiplier * df['atr'])
+        df['atr_lower'] = df['close'] - (atr_multiplier * df['atr'])
         df = add_indicators_signal_flag(df)
         df = SupertrendIndicator(df=df, period=period, atr_multiplier=atr_multiplier, window=window).supertrend()
 

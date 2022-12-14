@@ -1,6 +1,6 @@
-from ta.utils import IndicatorMixin
 import pandas as pd
 from pandas_ta.overlap import ema
+from ta.utils import IndicatorMixin
 
 
 class SmoothedEMAIndicator(IndicatorMixin):

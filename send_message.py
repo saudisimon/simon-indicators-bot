@@ -1,15 +1,17 @@
 from builtins import print
 
-
 from services.telegram.client import TeleClient
+
 
 def round_with_precision(normalized, precision):
     return round(normalized, precision)
+
 
 def get_precision(default):
     array = str(default).split('.')
     precision = len(array[1])
     return precision
+
 
 def add_supertrend_pull_back_condition(df):
     pull_back_long_cond = (df['increase:(kdj.j:25,3,3),3,-1']) \
@@ -25,8 +27,10 @@ def add_supertrend_pull_back_condition(df):
     df['pull_back_long_cond'] = pull_back_long_cond
     df['pull_back_short_cond'] = pull_back_short_cond
     return df
+
+
 def send_supertrend_pull_back_message(symbol, interval, df, alert_once):
-    try :
+    try:
         current_index = len(df.index) - 2
         previous_index = current_index - 1
         df = add_supertrend_pull_back_condition(df)
@@ -65,8 +69,9 @@ def send_supertrend_pull_back_message(symbol, interval, df, alert_once):
         pass
     return alert_once
 
+
 def send_cci_kdj_message(symbol, interval, df, alert_once):
-    try :
+    try:
         current_index = len(df.index) - 2
         previous_index = current_index - 1
         current_closed_price = df["close"][current_index]
@@ -96,7 +101,7 @@ def send_cci_kdj_message(symbol, interval, df, alert_once):
             TeleClient(message=message).send_message()
             alert_once = True
         elif (df['cci_kdj_sell_cond'][previous_index] == df['cci_kdj_sell_cond'][current_index]
-                      and df['cci_kdj_buy_cond'][previous_index] == df['cci_kdj_buy_cond'][current_index]) \
+              and df['cci_kdj_buy_cond'][previous_index] == df['cci_kdj_buy_cond'][current_index]) \
                 and alert_once:
             print("set alert cci kdj back to False")
             alert_once = False
@@ -104,6 +109,7 @@ def send_cci_kdj_message(symbol, interval, df, alert_once):
         print("=========Ticker:" + symbol + " Error: " + str(e) + "===========")
         pass
     return alert_once
+
 
 def send_heiken_ashi_message(symbol, interval, df, alert_once):
     try:
@@ -142,6 +148,7 @@ def send_heiken_ashi_message(symbol, interval, df, alert_once):
         pass
     return alert_once
 
+
 def send_bollinger_bands_message(symbol, interval, df, alert_once):
     try:
         current_index = len(df.index) - 2
@@ -164,7 +171,7 @@ def send_bollinger_bands_message(symbol, interval, df, alert_once):
             TeleClient(message=message).send_message()
             alert_once = True
         elif (df['bb_k_sell'][previous_index] == df['bb_k_sell'][current_index]
-                      and df['bb_k_buy'][previous_index] == df['bb_k_buy'][current_index]) \
+              and df['bb_k_buy'][previous_index] == df['bb_k_buy'][current_index]) \
                 and alert_once:
             print("set alert back to False")
             alert_once = False
@@ -172,6 +179,7 @@ def send_bollinger_bands_message(symbol, interval, df, alert_once):
         print("=========Ticker:" + symbol + " Error: " + str(e) + "===========")
         pass
     return alert_once
+
 
 def send_super_trend_message(symbol, interval, df, alert_once):
     try:

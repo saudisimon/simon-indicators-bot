@@ -1,9 +1,8 @@
-import string
-
 import pandas as pd
+from pandas_ta.statistics import stdev
 from stock_pandas import StockDataFrame
 from ta.trend import SMAIndicator, EMAIndicator
-from pandas_ta.statistics import stdev
+
 
 class BollingerKeltnerSqueezeKDJ():
     def __init__(self,
@@ -22,8 +21,10 @@ class BollingerKeltnerSqueezeKDJ():
     def _run(self):
         self.df = self.standard_deviation_bollinger_bands()
         self.df = self.keltner_channels()
-        self.df['bb_k_current_fill'] = ((self.df['bb_upper'] <= self.df['k_upper']) & (self.df['bb_lower'] >= self.df['k_lower']))
-        self.df['bb_k_previous_fill'] = ((self.df['bb_upper'].shift(1) <= self.df['k_upper'].shift(1)) & (self.df['bb_lower'].shift(1) >= self.df['k_lower'].shift(1)) & self.df['bb_k_current_fill'] == True)
+        self.df['bb_k_current_fill'] = (
+                    (self.df['bb_upper'] <= self.df['k_upper']) & (self.df['bb_lower'] >= self.df['k_lower']))
+        self.df['bb_k_previous_fill'] = ((self.df['bb_upper'].shift(1) <= self.df['k_upper'].shift(1)) & (
+                    self.df['bb_lower'].shift(1) >= self.df['k_lower'].shift(1)) & self.df['bb_k_current_fill'] == True)
 
         self.df['upper'] = (self.df['bb_upper'] <= self.df['k_upper'])
         self.df['lower'] = (self.df['bb_lower'] >= self.df['k_lower'])
@@ -62,17 +63,22 @@ class BollingerKeltnerSqueezeKDJ():
             else:
                 self.df['has_bb_k_latest_fill'][current] = self.df['has_bb_k_latest_fill'][previous]
 
-            if ((self.df['kdj.j:25,3,3,50.0/20.0'][current] == True) & (self.df['bb_k_current_fill'][current] == False) & (self.df['has_bb_k_latest_fill'][previous] == True) & (self.df['has_crossed'][current] == False)):
+            if ((self.df['kdj.j:25,3,3,50.0/20.0'][current] == True) & (
+                    self.df['bb_k_current_fill'][current] == False) & (
+                    self.df['has_bb_k_latest_fill'][previous] == True) & (self.df['has_crossed'][current] == False)):
                 self.df['bb_k_buy'][current] = True
                 self.df['has_bb_k_latest_fill'][current] = False
                 self.df['has_crossed'][current] = True
-            elif ((self.df['kdj.j:25,3,3,50.0\80.0'][current] == True) & (self.df['bb_k_current_fill'][current] == False) & (self.df['has_bb_k_latest_fill'][previous] == True) & (self.df['has_crossed'][current] == False)):
+            elif ((self.df['kdj.j:25,3,3,50.0\80.0'][current] == True) & (
+                    self.df['bb_k_current_fill'][current] == False) & (
+                          self.df['has_bb_k_latest_fill'][previous] == True) & (
+                          self.df['has_crossed'][current] == False)):
                 self.df['bb_k_sell'][current] = True
                 self.df['has_bb_k_latest_fill'][current] = False
                 self.df['has_crossed'][current] = True
 
-
         return self.df
+
     def bb_kdj_indicator(self) -> StockDataFrame:
         self.df = self._run()
         return self.df

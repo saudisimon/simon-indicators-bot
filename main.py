@@ -1,19 +1,20 @@
 import datetime
 
+import schedule
 from finta import TA
 
-import schedule
-
-from services.binance.client import BinanceClient
+from candles.ha import HeikinAshiCandlestick, heikin_ashi_smoothed_candles
+from indicators.momentum.bb_keltner_squeeze import BollingerKeltnerSqueezeKDJ
+from indicators.momentum.cci import SimonCCIIndicator
+from indicators.momentum.kdj import SimonKDJIndicator
+from indicators.overlap.supertrend import SupertrendIndicator
+from indicators.overlap.vwma import VWMAIndicator
 from indicators.trend.ema import SimonEMAIndicator
 from indicators.trend.smoothed_ema import SmoothedEMAIndicator
-from indicators.momentum.kdj import SimonKDJIndicator
-from indicators.momentum.cci import SimonCCIIndicator
-from indicators.momentum.bb_keltner_squeeze import BollingerKeltnerSqueezeKDJ
-from candles.ha import HeikinAshiCandlestick, heikin_ashi_smoothed_candles
-from indicators.overlap.vwma import VWMAIndicator
-from indicators.overlap.supertrend import SupertrendIndicator
-from send_message import send_cci_kdj_message, send_super_trend_message, send_heiken_ashi_message, send_supertrend_pull_back_message, send_bollinger_bands_message
+from send_message import send_heiken_ashi_message, \
+    send_bollinger_bands_message
+from services.binance.client import BinanceClient
+
 
 def add_indicators(df):
     df['ha_open'] = HeikinAshiCandlestick(open=df['open'], high=df['high'], low=df['low'],
@@ -37,6 +38,7 @@ def add_indicators(df):
     df = add_smoothed_ema(df)
 
     return df
+
 
 def add_vwma(df):
     vwma_indicator = VWMAIndicator(open=df['ha_open'], high=df['ha_high'], low=df['ha_low'], close=df['ha_close'],
@@ -65,9 +67,11 @@ def add_vwma(df):
     )
     return df
 
+
 def add_smoothed_ema(df):
-    sema_indicator = SmoothedEMAIndicator(open=df['ha_open'], high=df['ha_high'], low=df['ha_low'], close=df['ha_close'],
-                                   volume=df['volume'], period=52, smooth=10)
+    sema_indicator = SmoothedEMAIndicator(open=df['ha_open'], high=df['ha_high'], low=df['ha_low'],
+                                          close=df['ha_close'],
+                                          volume=df['volume'], period=52, smooth=10)
     df['sema_open'] = sema_indicator.get_sema_open()
     df['sema_high'] = sema_indicator.get_sema_high()
     df['sema_low'] = sema_indicator.get_sema_low()
@@ -92,16 +96,17 @@ def add_smoothed_ema(df):
     )
     return df
 
+
 def add_indicators_signal_flag(df):
     # CCI Signal
     short_df_min = df.rolling(window=20).min().shift(1)
     short_df_max = df.rolling(window=20).max().shift(1)
     df['cci_cross_up'] = (
-                (df['cci_18'] > -100.0) & (short_df_min['cci_18'] < -200.0) & (short_df_max['cci_18'] < 200.0) & (
-                    df['cci_18'] >= df['cci_54']) & (df['cci_18'].shift(1) <= df['cci_54'].shift(1)))
+            (df['cci_18'] > -100.0) & (short_df_min['cci_18'] < -200.0) & (short_df_max['cci_18'] < 200.0) & (
+            df['cci_18'] >= df['cci_54']) & (df['cci_18'].shift(1) <= df['cci_54'].shift(1)))
     df['cci_cross_down'] = (
-                (df['cci_18'] < 100.0) & (short_df_max['cci_18'] > 200.0) & (short_df_min['cci_18'] < -200.0) & (
-                    df['cci_18'] <= df['cci_54']) & (df['cci_18'].shift(1) >= df['cci_54'].shift(1)))
+            (df['cci_18'] < 100.0) & (short_df_max['cci_18'] > 200.0) & (short_df_min['cci_18'] < -200.0) & (
+            df['cci_18'] <= df['cci_54']) & (df['cci_18'].shift(1) >= df['cci_54'].shift(1)))
 
     # KDJ and CCI Signal
     df['cci_kdj_buy_cond'] = (df['cci_cross_up']) \
@@ -111,6 +116,8 @@ def add_indicators_signal_flag(df):
                               & (df['kdj.j:25,3,3\80.0'] | df['kdj.j:25,3,3\80.0'].shift(1) | df[
         'kdj.j:25,3,3\80.0'].shift(2) | df['kdj.j:25,3,3\80.0'].shift(3))
     return df
+
+
 def get_chart_1h():
     interval = '1h'
     period = 10
@@ -128,7 +135,9 @@ def get_chart_4h():
     limit = 800
     return interval, period, atr_multiplier, window, limit
 
-def run_bot(symbol, interval, period, atr_multiplier, window, limit, alert_once, alerts_cci_kdj, alerts_pull_back, alerts_ha, alerts_bb):
+
+def run_bot(symbol, interval, period, atr_multiplier, window, limit, alert_once, alerts_cci_kdj, alerts_pull_back,
+            alerts_ha, alerts_bb):
     try:
         now = datetime.datetime.now()
         print(f"Fetching Historical Klines: {symbol} - Chart: {interval} - Time: {now} ...... ")
@@ -153,6 +162,7 @@ def run_bot(symbol, interval, period, atr_multiplier, window, limit, alert_once,
         print("=========Ticker:" + symbol + " Error: " + str(e) + "===========")
         pass
 
+
 if __name__ == '__main__':
     binance_client = BinanceClient()
     symbols = binance_client.get_all_tickers()
@@ -174,9 +184,11 @@ if __name__ == '__main__':
         if 'USDT' in symbol:
             try:
                 schedule.every(2).seconds.do(run_bot, symbol, interval1h, period1h, atr_multiplier1h, window1h, limit1h,
-                                             alerts1h, alerts_cci_kdj_1h, alerts_pull_back_1h, alerts_ha_1h, alerts_bb_1h)
+                                             alerts1h, alerts_cci_kdj_1h, alerts_pull_back_1h, alerts_ha_1h,
+                                             alerts_bb_1h)
                 schedule.every(2).seconds.do(run_bot, symbol, interval4h, period4h, atr_multiplier4h, window4h, limit4h,
-                                             alerts4h, alerts_cci_kdj_4h, alerts_pull_back_4h, alerts_ha_4h, alerts_bb_4h)
+                                             alerts4h, alerts_cci_kdj_4h, alerts_pull_back_4h, alerts_ha_4h,
+                                             alerts_bb_4h)
             except Exception as e:
                 print("=========Ticker:" + symbol + " Error: " + str(e) + "===========")
                 pass

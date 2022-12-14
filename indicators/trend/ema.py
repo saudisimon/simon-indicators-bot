@@ -1,6 +1,6 @@
 import pandas as pd
-from ta.utils import IndicatorMixin
 from ta.trend import EMAIndicator
+from ta.utils import IndicatorMixin
 
 
 class SimonEMAIndicator(IndicatorMixin):

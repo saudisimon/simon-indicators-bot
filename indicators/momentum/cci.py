@@ -1,5 +1,3 @@
-import string
-
 import pandas as pd
 from stock_pandas import StockDataFrame
 from ta.trend import SMAIndicator

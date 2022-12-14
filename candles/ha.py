@@ -160,10 +160,10 @@ def heikin_ashi_candlestick_close(open, high, low, close, fillna=False):
 def heikin_ashi_smoothed_candles(df):
     local_df = df
 
-    local_df['heikin_ashi_open'] = EMAIndicator(local_df['ha_open'], window=10).ema_indicator()
-    local_df['heikin_ashi_high'] = EMAIndicator(local_df['ha_high'], window=10).ema_indicator()
-    local_df['heikin_ashi_low'] = EMAIndicator(local_df['ha_low'], window=10).ema_indicator()
-    local_df['heikin_ashi_close'] = EMAIndicator(local_df['ha_close'], window=10).ema_indicator()
+    local_df['heikin_ashi_open'] = EMAIndicator(local_df['ha_open'], window=3).ema_indicator()
+    local_df['heikin_ashi_high'] = EMAIndicator(local_df['ha_high'], window=3).ema_indicator()
+    local_df['heikin_ashi_low'] = EMAIndicator(local_df['ha_low'], window=3).ema_indicator()
+    local_df['heikin_ashi_close'] = EMAIndicator(local_df['ha_close'], window=3).ema_indicator()
 
     df['heikin_ashi_open'] = EMAIndicator(local_df['heikin_ashi_open'], window=10).ema_indicator()
     df['heikin_ashi_high'] = EMAIndicator(local_df['heikin_ashi_high'], window=10).ema_indicator()

@@ -6,12 +6,14 @@ import schedule
 
 from services.binance.client import BinanceClient
 from indicators.trend.ema import SimonEMAIndicator
+from indicators.trend.smoothed_ema import SmoothedEMAIndicator
 from indicators.momentum.kdj import SimonKDJIndicator
 from indicators.momentum.cci import SimonCCIIndicator
+from indicators.momentum.bb_keltner_squeeze import BollingerKeltnerSqueezeKDJ
 from candles.ha import HeikinAshiCandlestick, heikin_ashi_smoothed_candles
 from indicators.overlap.vwma import VWMAIndicator
 from indicators.overlap.supertrend import SupertrendIndicator
-from send_message import send_cci_kdj_message, send_super_trend_message, send_heiken_ashi_message, send_supertrend_pull_back_message
+from send_message import send_cci_kdj_message, send_super_trend_message, send_heiken_ashi_message, send_supertrend_pull_back_message, send_bollinger_bands_message
 
 def add_indicators(df):
     df['ha_open'] = HeikinAshiCandlestick(open=df['open'], high=df['high'], low=df['low'],
@@ -30,7 +32,15 @@ def add_indicators(df):
     df = SimonKDJIndicator(df=df).kdj_indicator()
     df = SimonCCIIndicator(df=df, window=18).cci_indicator()
     df = SimonCCIIndicator(df=df, window=54).cci_indicator()
-    vwma_indicator = VWMAIndicator(open=df['ha_open'], high=df['ha_high'], low=df['ha_low'], close=df['ha_close'], volume=df['volume'], length=7)
+    df = BollingerKeltnerSqueezeKDJ(df=df, close=df['close']).bb_kdj_indicator()
+    df = add_vwma(df)
+    df = add_smoothed_ema(df)
+
+    return df
+
+def add_vwma(df):
+    vwma_indicator = VWMAIndicator(open=df['ha_open'], high=df['ha_high'], low=df['ha_low'], close=df['ha_close'],
+                                   volume=df['volume'], length=7)
     df['vwma_open'] = vwma_indicator.get_vwma_open()
     df['vwma_high'] = vwma_indicator.get_vwma_high()
     df['vwma_low'] = vwma_indicator.get_vwma_low()
@@ -47,10 +57,37 @@ def add_indicators(df):
     df['ha_vwma_in_downtrend'] = (
             (
                     (df['heikin_ashi_in_uptrend'] == False) & (df['heikin_ashi_in_uptrend'].shift(1)) & (
-                        df['vwma_in_uptrend'] == False)
+                    df['vwma_in_uptrend'] == False)
             ) | (
                     (df['vwma_in_uptrend'] == False) & (df['vwma_in_uptrend'].shift(1)) & (
-                        df['heikin_ashi_in_uptrend'] == False)
+                    df['heikin_ashi_in_uptrend'] == False)
+            )
+    )
+    return df
+
+def add_smoothed_ema(df):
+    sema_indicator = SmoothedEMAIndicator(open=df['ha_open'], high=df['ha_high'], low=df['ha_low'], close=df['ha_close'],
+                                   volume=df['volume'], period=52, smooth=10)
+    df['sema_open'] = sema_indicator.get_sema_open()
+    df['sema_high'] = sema_indicator.get_sema_high()
+    df['sema_low'] = sema_indicator.get_sema_low()
+    df['sema_close'] = sema_indicator.get_sema_close()
+    df['sema_in_uptrend'] = (df['sema_open'] < df['sema_close'])
+    df['ha_sema_in_uptrend'] = (
+            (
+                    (df['heikin_ashi_in_uptrend'].shift(1) == False) & df['heikin_ashi_in_uptrend'] & df[
+                'sema_in_uptrend']
+            ) | (
+                    (df['sema_in_uptrend'].shift(1) == False) & df['sema_in_uptrend'] & df['heikin_ashi_in_uptrend']
+            )
+    )
+    df['ha_sema_in_downtrend'] = (
+            (
+                    (df['heikin_ashi_in_uptrend'] == False) & (df['heikin_ashi_in_uptrend'].shift(1)) & (
+                    df['sema_in_uptrend'] == False)
+            ) | (
+                    (df['sema_in_uptrend'] == False) & (df['sema_in_uptrend'].shift(1)) & (
+                    df['heikin_ashi_in_uptrend'] == False)
             )
     )
     return df
@@ -87,11 +124,11 @@ def get_chart_4h():
     interval = '4h'
     period = 20
     atr_multiplier = 3.5
-    window = "ema_144"
+    window = "ema_60"
     limit = 800
     return interval, period, atr_multiplier, window, limit
 
-def run_bot(symbol, interval, period, atr_multiplier, window, limit, alert_once, alerts_cci_kdj, alerts_pull_back, alerts_ha):
+def run_bot(symbol, interval, period, atr_multiplier, window, limit, alert_once, alerts_cci_kdj, alerts_pull_back, alerts_ha, alerts_bb):
     try:
         now = datetime.datetime.now()
         print(f"Fetching Historical Klines: {symbol} - Chart: {interval} - Time: {now} ...... ")
@@ -108,9 +145,10 @@ def run_bot(symbol, interval, period, atr_multiplier, window, limit, alert_once,
         alerts_cci_kdj[symbol] = send_cci_kdj_message(symbol, interval, df, alerts_cci_kdj[symbol])
         alerts_pull_back[symbol] = send_supertrend_pull_back_message(symbol, interval, df, alerts_pull_back[symbol])
         alerts_ha[symbol] = send_heiken_ashi_message(symbol, interval, df, alerts_ha[symbol])
+        alerts_bb[symbol] = send_bollinger_bands_message(symbol, interval, df, alerts_bb[symbol])
         print(df.tail(4))
         # exit()
-        return alert_once, alerts_cci_kdj, alerts_pull_back, alerts_ha
+        return alert_once, alerts_cci_kdj, alerts_pull_back, alerts_ha, alerts_bb
     except Exception as e:
         print("=========Ticker:" + symbol + " Error: " + str(e) + "===========")
         pass
@@ -125,18 +163,20 @@ if __name__ == '__main__':
     alerts_cci_kdj_1h = {}.fromkeys(symbols, False)
     alerts_pull_back_1h = {}.fromkeys(symbols, False)
     alerts_ha_1h = {}.fromkeys(symbols, False)
+    alerts_bb_1h = {}.fromkeys(symbols, False)
     alerts4h = {}.fromkeys(symbols, False)
     alerts_cci_kdj_4h = {}.fromkeys(symbols, False)
     alerts_pull_back_4h = {}.fromkeys(symbols, False)
     alerts_ha_4h = {}.fromkeys(symbols, False)
+    alerts_bb_4h = {}.fromkeys(symbols, False)
 
     for symbol in symbols:
         if 'USDT' in symbol:
             try:
                 schedule.every(2).seconds.do(run_bot, symbol, interval1h, period1h, atr_multiplier1h, window1h, limit1h,
-                                             alerts1h, alerts_cci_kdj_1h, alerts_pull_back_1h, alerts_ha_1h)
+                                             alerts1h, alerts_cci_kdj_1h, alerts_pull_back_1h, alerts_ha_1h, alerts_bb_1h)
                 schedule.every(2).seconds.do(run_bot, symbol, interval4h, period4h, atr_multiplier4h, window4h, limit4h,
-                                             alerts4h, alerts_cci_kdj_4h, alerts_pull_back_4h, alerts_ha_4h)
+                                             alerts4h, alerts_cci_kdj_4h, alerts_pull_back_4h, alerts_ha_4h, alerts_bb_4h)
             except Exception as e:
                 print("=========Ticker:" + symbol + " Error: " + str(e) + "===========")
                 pass

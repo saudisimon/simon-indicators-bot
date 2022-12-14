@@ -15,6 +15,8 @@ class SimonKDJIndicator():
         self.k = k
 
     def kdj_indicator(self) -> StockDataFrame:
+        self.df.exec(f"kdj.j:{self.k},{self.d},{self.j}", create_column=True)
+        self.df.exec(f"kdj.j:{self.k},{self.d},{self.j}", create_column=True)
         self.df.exec(f"kdj.j:{self.k},{self.d},{self.j}/20.0", create_column=True)
         self.df.exec(f"kdj.j:{self.k},{self.d},{self.j}\80.0", create_column=True)
         self.df.exec(f"kdj.j:{self.k},{self.d},{self.j}>=80.0", create_column=True)

@@ -116,7 +116,7 @@ def send_heiken_ashi_message(symbol, interval, df, alert_once):
         atr_lower = df["atr_lower"][current_index]
 
         # Buy
-        if df['ha_vwma_in_uptrend'][current_index] and df['in_uptrend'][current_index] and not alert_once:
+        if df['ha_sema_in_uptrend'][current_index] and df['in_uptrend'][current_index] and not alert_once:
             print("heikin ashi changed to uptrend, buy " + symbol)
             sl = round_with_precision(atr_lower, precision)
             message = f'LONG {symbol} - Chart:{interval} 💎\n\n' \
@@ -125,7 +125,7 @@ def send_heiken_ashi_message(symbol, interval, df, alert_once):
                       f'#{symbol} #heikin_ashi_signal #pull_back_entry #long #short_term \n\n'
             TeleClient(message=message).send_message()
             alert_once = True
-        elif df['ha_vwma_in_downtrend'][current_index] and not df['in_uptrend'][current_index] and not alert_once:
+        elif df['ha_sema_in_downtrend'][current_index] and not df['in_uptrend'][current_index] and not alert_once:
             print("heikin ashi changed to downtrend, sell " + symbol)
             sl = round_with_precision(atr_upper, precision)
             message = f'SHORT {symbol} - Chart:{interval} 💎\n\n' \
@@ -134,8 +134,38 @@ def send_heiken_ashi_message(symbol, interval, df, alert_once):
                       f'#{symbol} #heikin_ashi_signal #pull_back_entry #short_term #short \n\n'
             TeleClient(message=message).send_message()
             alert_once = True
-        elif (df['ha_vwma_in_downtrend'][previous_index] == df['cci_kdj_sell_cond'][current_index]
-                      and df['ha_vwma_in_uptrend'][previous_index] == df['ha_vwma_in_uptrend'][current_index]) and alert_once:
+        elif df['ha_sema_in_uptrend'][previous_index] == df['ha_sema_in_uptrend'][current_index] and alert_once:
+            print("set alert back to False")
+            alert_once = False
+    except Exception as e:
+        print("=========Ticker:" + symbol + " Error: " + str(e) + "===========")
+        pass
+    return alert_once
+
+def send_bollinger_bands_message(symbol, interval, df, alert_once):
+    try:
+        current_index = len(df.index) - 2
+        previous_index = current_index - 1
+        current_closed_price = df["close"][current_index]
+
+        # Buy
+        if df['bb_k_buy'][current_index] and not alert_once:
+            print("BB-Keltner Squeeze-FVBO-2.0, buy " + symbol)
+            message = f'LONG {symbol} - Chart:{interval} 💎\n\n' \
+                      f'Entry: ${current_closed_price}\n' \
+                      f'#{symbol} #BB_Keltner #buy \n\n'
+            TeleClient(message=message).send_message()
+            alert_once = True
+        elif df['bb_k_sell'][current_index] and not alert_once:
+            print("BB-Keltner Squeeze-FVBO-2.0, sell " + symbol)
+            message = f'SHORT {symbol} - Chart:{interval} 💎\n\n' \
+                      f'Entry: ${current_closed_price}\n' \
+                      f'#{symbol} #BB_Keltner #sell \n\n'
+            TeleClient(message=message).send_message()
+            alert_once = True
+        elif (df['bb_k_sell'][previous_index] == df['bb_k_sell'][current_index]
+                      and df['bb_k_buy'][previous_index] == df['bb_k_buy'][current_index]) \
+                and alert_once:
             print("set alert back to False")
             alert_once = False
     except Exception as e:
